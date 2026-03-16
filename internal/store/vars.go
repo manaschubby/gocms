@@ -1,0 +1,10 @@
+package store
+
+const (
+	POSTGRES_USER_VAR     = "PGUSER"
+	POSTGRES_PASSWORD_VAR = "PGPASSWORD"
+	POSTGRES_DB_VAR       = "PGDATABASE"
+	POSTGRES_PORT_VAR     = "PGPORT"
+	POSTGRES_HOST_VAR     = "PGHOST"
+	POSTGRES_SSLMODE_VAR  = "PGSSLMODE" // Common for production/cloud DBs
+)

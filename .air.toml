@@ -1,0 +1,49 @@
+# Reference: https://github.com/air-verse/air
+
+# Project root (inside the dev container)
+root = "."
+# Temporary directory for build artifacts and PID
+tmp_dir = "tmp"
+
+[build]
+# Build the API binary from ./cmd/main.go into ./tmp/api
+cmd = "go build -trimpath -o ./tmp/api ./cmd"
+entrypoint = "./tmp/api"
+full_bin = "./tmp/api"
+
+# Rebuild and restart debounce duration
+delay = 100
+
+# Send SIGINT to allow graceful shutdown
+send_interrupt = true
+# Stop the runner on build error
+stop_on_error = true
+# Time to wait before killing the process if it doesn't exit after SIGINT
+kill_delay = "500ms"
+
+# Only watch these directories for changes (reduces noise)
+include_dir = ["cmd", "internal"]
+# File extensions that trigger rebuilds
+include_ext = ["go", "mod", "sum", "env"]
+# Directories to ignore
+exclude_dir = ["tmp", "vendor", ".git"]
+# Ignore test files
+exclude_regex = ["_test.go$"]
+
+# If you want to run commands before/after build, uncomment:
+# pre_cmd = "echo 'pre-build hook'"
+# post_cmd = "echo 'post-build hook'"
+
+[log]
+# Prefix logs with timestamp
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# Clean tmp_dir on exit
+clean_on_exit = true

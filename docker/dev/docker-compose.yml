@@ -1,0 +1,41 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+    image: gocms-dev
+    ports:
+      - "7467:7467"
+    volumes:
+      - .:/app
+      - gocms_tmp:/app/tmp
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - gocms-network
+    command: >
+      sh -c "air -c .air.toml"
+
+  db:
+    image: postgres:15.3-bookworm
+    env_file:
+      - .env
+    networks:
+      - gocms-network
+    ports:
+      - ${PGPORT}:${PGPORT}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${PGDATABASE}"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - gocms_postgres:/var/lib/postgresql/data
+
+networks:
+  gocms-network:
+
+volumes:
+  gocms_postgres:
+  gocms_tmp:
