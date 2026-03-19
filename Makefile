@@ -5,11 +5,17 @@ endif
 
 
 
-.PHONY: dev dev-rebuild down
+.PHONY: dev dev-rebuild down down-volume test
 dev:
 	@docker compose --project-directory . -f docker/dev/docker-compose.yml up -d
 dev-rebuild:
 	@docker compose --project-directory . -f docker/dev/docker-compose.yml up --build -d
+down:
+	@docker compose --project-directory . -f docker/dev/docker-compose.yml down
+down-volume:
+	@docker compose --project-directory . -f docker/dev/docker-compose.yml down -v
+test:
+	@go test -v ./...
 
 
 GO_BIN_DIR := $(shell go env GOBIN)

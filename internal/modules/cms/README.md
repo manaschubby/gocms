@@ -1,0 +1,1 @@
+- Accounts Keep track of user entities adding/subscribing to the CMS DB.
