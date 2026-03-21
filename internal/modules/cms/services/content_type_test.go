@@ -49,6 +49,36 @@ func TestContentTypeService_CreateNewContentType(t *testing.T) {
 			expectedError: "failed to validate schema definition for title",
 		},
 		{
+			name: "Fail - Extremely Long title",
+			input: &domain.ContentType{
+				AccountId: accountID,
+				Name:      "EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING",
+				SchemaDefinition: map[string]domain.SchemaDefinition{
+					"title": {ColumnType: domain.ShortTextColumn, ColumnDefinition: domain.SingleValuedColumn},
+				},
+			},
+			setupMock: func(am *mocks.MockAccountRepo, cm *mocks.MockContentTypeRepo) {
+				am.On("GetAccountByUUID", accountID, mock.Anything).Return(&domain.Account{Id: accountID}, nil)
+			},
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "name too long",
+		},
+		{
+			name: "Fail - Extremely Long Slug",
+			input: &domain.ContentType{
+				AccountId: accountID,
+				Slug:      "EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING",
+				SchemaDefinition: map[string]domain.SchemaDefinition{
+					"title": {ColumnType: domain.ShortTextColumn, ColumnDefinition: domain.SingleValuedColumn},
+				},
+			},
+			setupMock: func(am *mocks.MockAccountRepo, cm *mocks.MockContentTypeRepo) {
+				am.On("GetAccountByUUID", accountID, mock.Anything).Return(&domain.Account{Id: accountID}, nil)
+			},
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "slug length too long",
+		},
+		{
 			name: "Fail - Account Not Found",
 			input: &domain.ContentType{
 				AccountId: accountID,

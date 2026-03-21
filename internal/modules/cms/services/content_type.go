@@ -58,6 +58,14 @@ func (s *contentTypeService) CreateNewContentType(ctx context.Context, ct *domai
 		return http.StatusBadRequest, errors.New("invalid characters in slug")
 	}
 
+	if len(encodedSlug.String()) >= 255 {
+		return http.StatusBadRequest, errors.New("slug length too long")
+	}
+
+	if len(ct.Name) >= 255 {
+		return http.StatusBadRequest, errors.New("name too long")
+	}
+
 	oldCt, err := s.r.ContentType.GetContentTypeBySlug(encodedSlug.String(), repository.GetContentTypeOptions{Context: &ctx})
 	if err != nil {
 		log.Printf("failed to check for current existing content types: %v", err)
