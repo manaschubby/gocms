@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/manaschubby/gocms/internal/modules/cms/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestColumnType_IsValid(t *testing.T) {
@@ -262,4 +263,93 @@ func TestContentType_Validate(t *testing.T) {
 		}
 		assert.NoError(t, ct.Validate())
 	})
+}
+
+func TestSchemaDefinitionMap_Value(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   domain.SchemaDefinitionMap
+		want    any // driver.Value is an alias for any
+		wantErr bool
+	}{
+		{
+			name:    "Success - Valid Map",
+			input:   domain.SchemaDefinitionMap{"title": {ColumnType: domain.ShortTextColumn, ColumnDefinition: 0, Required: false}},
+			want:    []byte(`{"title": {"columnDefinition":0, "columnType":"short-text", "required":false}}`), // Adjust keys based on your actual JSON tags
+			wantErr: false,
+		},
+		{
+			name:    "Success - Empty Map returns nil",
+			input:   domain.SchemaDefinitionMap{},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "Success - Nil Map returns nil",
+			input:   nil,
+			want:    nil,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.input.Value()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tt.want == nil {
+					assert.Nil(t, got)
+				} else {
+					// We compare as JSON strings to avoid byte slice pointer issues
+					assert.JSONEq(t, string(tt.want.([]byte)), string(got.([]byte)))
+				}
+			}
+		})
+	}
+}
+
+func TestSchemaDefinitionMap_Scan(t *testing.T) {
+	validJSON := []byte(`{"title":{"columnType":"short-text"}}`)
+
+	tests := []struct {
+		name          string
+		src           any
+		expectedState domain.SchemaDefinitionMap
+		expectedErr   string
+	}{
+		{
+			name: "Success - Valid Byte Slice",
+			src:  validJSON,
+			expectedState: domain.SchemaDefinitionMap{
+				"title": {ColumnType: domain.ShortTextColumn},
+			},
+		},
+		{
+			name:        "Fail - Invalid Type (String instead of []byte)",
+			src:         `{"title":"value"}`,
+			expectedErr: "failed to assert into []byte",
+		},
+		{
+			name:        "Fail - Corrupt JSON",
+			src:         []byte(`{"title": { "broken" ...`),
+			expectedErr: "failed to unmarshal string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sdm domain.SchemaDefinitionMap
+			err := sdm.Scan(tt.src)
+
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedState, sdm)
+			}
+		})
+	}
 }
