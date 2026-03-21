@@ -17,6 +17,10 @@ type AccountRepository interface {
 type ContentTypeRepository interface {
 	CreateNewContentType(ct *domain.ContentType, options CreateNewContentTypeOptions) error
 	GetContentTypeBySlug(slug string, options GetContentTypeOptions) (*domain.ContentType, error)
+	GetContentTypeById(id uuid.UUID, options GetContentTypeOptions) (*domain.ContentType, error)
+	GetContentTypesByAccountId(account uuid.UUID, options GetContentTypeOptions) ([]*domain.ContentType, error)
+	DeleteContentTypeBySlug(slug string, options DeleteContentTypeOptions) error
+	DeleteContentTypeById(id uuid.UUID, options DeleteContentTypeOptions) error
 }
 
 type Repositories struct {

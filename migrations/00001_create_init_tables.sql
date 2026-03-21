@@ -22,7 +22,7 @@ CREATE TABLE content_types (
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
 
-    -- JSON schema to validate the 'data' in entries (optional but recommended)
+    -- JSON schema to validate the 'data' in entries
     schema_definition JSONB NOT NULL,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

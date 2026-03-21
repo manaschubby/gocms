@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-type SchemaDefinitionMap map[string]SchemaDefinition
 
 type ContentType struct {
 	Id        uuid.UUID `json:"id" db:"id"`
@@ -23,6 +22,27 @@ type ContentType struct {
 
 	CreatedAt time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+func (ct *ContentType) Validate() error {
+	errFields := []string{}
+	for i, v := range ct.SchemaDefinition {
+		if !v.IsValid() {
+			errFields = append(errFields, i)
+		}
+	}
+	if len(errFields) != 0 {
+		return fmt.Errorf("invalid schema definitions for: %v", errFields)
+	}
+	return nil
+}
+
+func (ct *ContentType) Format(accountId uuid.UUID) {
+	ct.Slug = strings.Replace(ct.Slug, accountId.String(), "", 1)
+}
+
+func GetContentTypeSlugFor(accountId uuid.UUID, baseSlug string) string {
+	return accountId.String() + baseSlug
 }
 
 type ColumnType string
@@ -185,20 +205,9 @@ func (sd *SchemaDefinition) ValidateAny(v any) error {
 	return nil
 }
 
-func (ct *ContentType) Validate() error {
-	errFields := []string{}
-	for i, v := range ct.SchemaDefinition {
-		if !v.IsValid() {
-			errFields = append(errFields, i)
-		}
-	}
-	if len(errFields) != 0 {
-		return fmt.Errorf("invalid schema definitions for: %v", errFields)
-	}
-	return nil
-}
+// Sql.Scanner and Sql.Valuer implementations (this is for jsonb field read/write)
+type SchemaDefinitionMap map[string]SchemaDefinition
 
-// Sql.Scanner and Sql.Valuer implementations
 func (sdm SchemaDefinitionMap) Value() (driver.Value, error) {
 	if len(sdm) == 0 {
 		return nil, nil

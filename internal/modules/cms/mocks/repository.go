@@ -44,6 +44,33 @@ func (m *MockContentTypeRepo) GetContentTypeBySlug(slug string, opt repository.G
 	}
 	return args.Get(0).(*domain.ContentType), args.Error(1)
 }
+
 func (m *MockContentTypeRepo) CreateNewContentType(ct *domain.ContentType, opt repository.CreateNewContentTypeOptions) error {
 	return m.Called(ct, opt).Error(0)
+}
+
+func (m *MockContentTypeRepo) DeleteContentTypeBySlug(slug string, opt repository.DeleteContentTypeOptions) error {
+	args := m.Called(slug, opt)
+	return args.Error(0)
+}
+
+func (m *MockContentTypeRepo) DeleteContentTypeById(id uuid.UUID, opt repository.DeleteContentTypeOptions) error {
+	args := m.Called(id, opt)
+	return args.Error(0)
+}
+
+func (m *MockContentTypeRepo) GetContentTypeById(id uuid.UUID, opt repository.GetContentTypeOptions) (*domain.ContentType, error) {
+	args := m.Called(id, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ContentType), args.Error(1)
+}
+
+func (m *MockContentTypeRepo) GetContentTypesByAccountId(account uuid.UUID, opt repository.GetContentTypeOptions) ([]*domain.ContentType, error) {
+	args := m.Called(account, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ContentType), args.Error(1)
 }

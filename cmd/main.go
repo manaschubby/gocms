@@ -29,8 +29,11 @@ func main() {
 	server.Use(middleware.RequestLogger())
 	server.Use(middleware.Recover())
 
+	// Route Registration
 	server.GET("/accounts", cms.Handlers.Account.GetAllAccounts)
+	server.GET("/content_types", cms.Handlers.ContentType.GetContentType)
 	server.POST("/content_types", cms.Handlers.ContentType.CreateContentType)
+	server.DELETE("/content_types", cms.Handlers.ContentType.DeleteContentType)
 
 	server.Start(":7467")
 }
