@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,17 +10,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type SchemaDefinitionMap map[string]SchemaDefinition
+
 type ContentType struct {
-	Id        uuid.UUID `json:"id"`
-	AccountId uuid.UUID `json:"accountId"`
+	Id        uuid.UUID `json:"id" db:"id"`
+	AccountId uuid.UUID `json:"accountId" db:"account_id"`
 
-	Name             string                      `json:"name"`
-	Slug             string                      `json:"slug"`
-	Description      string                      `json:"description"`
-	SchemaDefinition map[string]SchemaDefinition `json:"schemaDefinition"`
+	Name             string              `json:"name" db:"name"`
+	Slug             string              `json:"slug" db:"slug"`
+	Description      string              `json:"description" db:"description"`
+	SchemaDefinition SchemaDefinitionMap `json:"schemaDefinition" db:"schema_definition"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type ColumnType string
@@ -74,10 +77,10 @@ func (cd ColumnDefinition) IsValid() bool {
 type SchemaDefinition struct {
 	ColumnType       ColumnType       `json:"columnType"`
 	ColumnDefinition ColumnDefinition `json:"columnDefinition"` // SingleValuedColumn or ListValuedColumn
-	Metadata         any              `json:"metadata"`
 	DefaultValue     any              `json:"defaultValue,omitempty"`
 	Required         bool             `json:"required"`
 	Description      string           `json:"description,omitempty"`
+	// Metadata         any              `json:"metadata,omitempty"`
 }
 
 func (sd *SchemaDefinition) IsValid() bool {
@@ -89,8 +92,10 @@ func (sd *SchemaDefinition) IsValid() bool {
 		return false
 	}
 
-	if err := sd.ValidateAny(sd.DefaultValue); err != nil {
-		return false
+	if sd.DefaultValue != nil {
+		if err := sd.ValidateAny(sd.DefaultValue); err != nil {
+			return false
+		}
 	}
 
 	return true
@@ -189,6 +194,26 @@ func (ct *ContentType) Validate() error {
 	}
 	if len(errFields) != 0 {
 		return fmt.Errorf("invalid schema definitions for: %v", errFields)
+	}
+	return nil
+}
+
+// Sql.Scanner and Sql.Valuer implementations
+func (sdm SchemaDefinitionMap) Value() (driver.Value, error) {
+	if len(sdm) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(sdm)
+}
+func (sdm *SchemaDefinitionMap) Scan(src any) error {
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("failed to assert into []byte. corrupt value")
+	}
+
+	err := json.Unmarshal(source, sdm)
+	if err != nil {
+		return errors.New("failed to unmarshal string into schema definition. corrupt value")
 	}
 	return nil
 }

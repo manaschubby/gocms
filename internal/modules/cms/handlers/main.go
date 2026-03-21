@@ -2,14 +2,18 @@ package handlers
 
 import (
 	"github.com/manaschubby/gocms/internal/modules/cms/repository"
+	"github.com/manaschubby/gocms/internal/modules/cms/services"
 )
 
 type Handlers struct {
-	Account AccountHandler
+	Account     AccountHandlers
+	ContentType ContentTypeHandlers
 }
 
 func New(r repository.Repositories) *Handlers {
+	cmsService := services.New(r)
 	return &Handlers{
-		Account: NewAccountHandler(r),
+		Account:     NewAccountHandlers(r),
+		ContentType: NewContentTypeHandlers(r, *cmsService),
 	}
 }

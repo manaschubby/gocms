@@ -30,6 +30,7 @@ func main() {
 	server.Use(middleware.Recover())
 
 	server.GET("/accounts", cms.Handlers.Account.GetAllAccounts)
+	server.POST("/content_types", cms.Handlers.ContentType.CreateContentType)
 
 	server.Start(":7467")
 }

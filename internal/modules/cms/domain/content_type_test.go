@@ -131,6 +131,99 @@ func TestSchemaDefinition_ValidateAny(t *testing.T) {
 	}
 }
 
+func TestSchemaDefinition_IsValid(t *testing.T) {
+	tests := []struct {
+		name     string
+		sd       domain.SchemaDefinition
+		expected bool
+	}{
+		{
+			name: "Empty Default Value",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ShortTextColumn,
+				ColumnDefinition: domain.SingleValuedColumn,
+			},
+			expected: true,
+		},
+		{
+			name: "Valid ShortText",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ShortTextColumn,
+				ColumnDefinition: domain.SingleValuedColumn,
+				DefaultValue:     "Hello",
+			},
+			expected: true,
+		},
+		{
+			name: "Invalid ColumnType",
+			sd: domain.SchemaDefinition{
+				ColumnType:       "wrong",
+				ColumnDefinition: domain.SingleValuedColumn,
+			},
+			expected: false,
+		},
+		{
+			name: "Invalid ColumnDefinition",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ShortTextColumn,
+				ColumnDefinition: domain.ColumnDefinition(99),
+			},
+			expected: false,
+		},
+		{
+			name: "ShortText Too Long",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ShortTextColumn,
+				ColumnDefinition: domain.SingleValuedColumn,
+				DefaultValue:     string(make([]byte, domain.SHORT_TEXT_MAX_LENGTH+1)),
+			},
+			expected: false,
+		},
+		{
+			name: "Valid ListValued",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.BooleanColumn,
+				ColumnDefinition: domain.ListValuedColumn,
+				DefaultValue:     []any{true, false},
+			},
+			expected: true,
+		},
+		{
+			name: "Invalid ListValued - Not an array",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.BooleanColumn,
+				ColumnDefinition: domain.ListValuedColumn,
+				DefaultValue:     true, // Should be []any
+			},
+			expected: false,
+		},
+		{
+			name: "Valid Reference UUID Object",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ReferenceColumn,
+				ColumnDefinition: domain.SingleValuedColumn,
+				DefaultValue:     uuid.New(),
+			},
+			expected: true,
+		},
+		{
+			name: "Valid Reference UUID String",
+			sd: domain.SchemaDefinition{
+				ColumnType:       domain.ReferenceColumn,
+				ColumnDefinition: domain.SingleValuedColumn,
+				DefaultValue:     uuid.New().String(),
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.sd.IsValid())
+		})
+	}
+}
+
 func TestContentType_Validate(t *testing.T) {
 	t.Run("Valid ContentType", func(t *testing.T) {
 		ct := &domain.ContentType{
@@ -156,5 +249,17 @@ func TestContentType_Validate(t *testing.T) {
 		err := ct.Validate()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "broken_field")
+	})
+
+	t.Run("Empty Default Value", func(t *testing.T) {
+		ct := &domain.ContentType{
+			SchemaDefinition: map[string]domain.SchemaDefinition{
+				"title": {
+					ColumnType:       domain.ShortTextColumn,
+					ColumnDefinition: domain.SingleValuedColumn,
+				},
+			},
+		}
+		assert.NoError(t, ct.Validate())
 	})
 }

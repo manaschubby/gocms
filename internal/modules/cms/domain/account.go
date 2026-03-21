@@ -9,12 +9,12 @@ import (
 )
 
 type Account struct {
-	Id          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	IsActive    bool      `json:"isActive"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Id          uuid.UUID `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	IsActive    bool      `json:"isActive" db:"is_active"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 // Converts (*)Account or [](*)Account to its json equivalent marshalled bytes

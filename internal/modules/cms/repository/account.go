@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/google/uuid"
@@ -31,39 +32,18 @@ func (r *accountRepository) GetAccounts(options GetAccountsOptions) ([]*domain.A
 	getAllAccounts := `SELECT * FROM account`
 	getAccountsByActive := getAllAccounts + ` WHERE is_active = $1`
 
-	var ctx context.Context
-	var cancel context.CancelFunc
-	if options.Context == nil {
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel()
-	} else {
-		ctx = *options.Context
-	}
+	ctx, cancel := ensureContext(options.Context)
+	defer cancel()
 
-	var accountRows *sqlx.Rows
+	var accounts []*domain.Account
 	var err error
 	if options.IsActive != nil {
-		accountRows, err = r.db.QueryxContext(ctx, getAccountsByActive, &options.IsActive)
+		err = r.db.SelectContext(ctx, &accounts, getAccountsByActive, &options.IsActive)
 	} else {
-		accountRows, err = r.db.QueryxContext(ctx, getAllAccounts)
+		err = r.db.SelectContext(ctx, &accounts, getAllAccounts)
 	}
 	if err != nil {
 		return nil, errors.New("Failed to Query DB:" + err.Error())
-	}
-	defer accountRows.Close()
-
-	var accounts []*domain.Account
-
-	for accountRows.Next() {
-		account := &domain.Account{}
-		var id *string
-		accountRows.Scan(&id, &account.Name, &account.Description, &account.IsActive, &account.CreatedAt, &account.UpdatedAt)
-		idUuid, err := uuid.Parse(*id)
-		if err != nil {
-			return nil, errors.New("Failed to parse UUID for account: " + err.Error())
-		}
-		account.Id = idUuid
-		accounts = append(accounts, account)
 	}
 
 	return accounts, nil
@@ -79,21 +59,10 @@ type CreateAccountOptions struct {
 func (r *accountRepository) CreateAccount(account *domain.Account, options CreateAccountOptions) error {
 	createAccount := `INSERT INTO account ("id", "name", "description", "is_active", "created_at", "updated_at") VALUES ($1,$2,$3,$4,$5,$6)`
 
-	var ctx context.Context
-	var cancel context.CancelFunc
-	if options.Context == nil {
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel()
-	} else {
-		ctx = *options.Context
-	}
+	ctx, cancel := ensureContext(options.Context)
+	defer cancel()
 
-	var execer sqlx.ExecerContext
-	if options.Tx != nil {
-		execer = options.Tx
-	} else {
-		execer = r.db
-	}
+	execer := getExecerContextFromTxOrDB(options.Tx, r.db)
 
 	_, err := execer.ExecContext(ctx, createAccount, account.Id.String(), account.Name, account.Description, account.IsActive, account.CreatedAt, account.UpdatedAt)
 	if err != nil {
@@ -101,4 +70,27 @@ func (r *accountRepository) CreateAccount(account *domain.Account, options Creat
 	}
 
 	return nil
+}
+
+type GetAccountOptions struct {
+	Context *context.Context
+}
+
+func (r *accountRepository) GetAccountByUUID(id uuid.UUID, options GetAccountOptions) (*domain.Account, error) {
+	getAccount := `SELECT "id", "name", "description", "is_active", "created_at", "updated_at" FROM account WHERE id = $1`
+
+	ctx, cancel := ensureContext(options.Context)
+	defer cancel()
+
+	acc := &domain.Account{}
+
+	err := r.db.GetContext(ctx, acc, getAccount, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, errors.New("failed to fetch account from DB: " + err.Error())
+	}
+
+	return acc, nil
 }

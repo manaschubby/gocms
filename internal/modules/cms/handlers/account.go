@@ -9,24 +9,24 @@ import (
 	httpTransport "github.com/manaschubby/gocms/internal/transport/http"
 )
 
-type AccountHandler interface {
+type AccountHandlers interface {
 	GetAllAccounts(e echo.Context) error
 }
 
-type accountHandler struct {
+type accountHandlers struct {
 	cmsRepositories repository.Repositories
 }
 
 // Ensure interface compliance
-var _ AccountHandler = &accountHandler{}
+var _ AccountHandlers = &accountHandlers{}
 
-func NewAccountHandler(r repository.Repositories) *accountHandler {
-	return &accountHandler{
+func NewAccountHandlers(r repository.Repositories) *accountHandlers {
+	return &accountHandlers{
 		cmsRepositories: r,
 	}
 }
 
-func (h *accountHandler) GetAllAccounts(e echo.Context) error {
+func (h *accountHandlers) GetAllAccounts(e echo.Context) error {
 	accounts, err := h.cmsRepositories.Account.GetAccounts(repository.GetAccountsOptions{})
 	if err != nil {
 		log.Println("failed to fetch accounts from DB: " + err.Error())
