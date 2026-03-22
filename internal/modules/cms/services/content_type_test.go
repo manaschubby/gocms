@@ -52,7 +52,7 @@ func TestContentTypeService_CreateNewContentType(t *testing.T) {
 			name: "Fail - Extremely Long title",
 			input: &domain.ContentType{
 				AccountId: accountID,
-				Name:      "EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING",
+				Name:      EXTREMELY_LONG_STRING,
 				SchemaDefinition: map[string]domain.SchemaDefinition{
 					"title": {ColumnType: domain.ShortTextColumn, ColumnDefinition: domain.SingleValuedColumn},
 				},
@@ -67,7 +67,7 @@ func TestContentTypeService_CreateNewContentType(t *testing.T) {
 			name: "Fail - Extremely Long Slug",
 			input: &domain.ContentType{
 				AccountId: accountID,
-				Slug:      "EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING_EXTREMELY_LONG_STRING",
+				Slug:      EXTREMELY_LONG_STRING,
 				SchemaDefinition: map[string]domain.SchemaDefinition{
 					"title": {ColumnType: domain.ShortTextColumn, ColumnDefinition: domain.SingleValuedColumn},
 				},

@@ -70,7 +70,55 @@ func TestSchemaDefinition_ValidateAny(t *testing.T) {
 			input:   42, // ValidateAny expects json.Number specifically
 			wantErr: true,
 		},
-
+		// --- Number Tests (json.Number) ---
+		{
+			name:    "Number valid integer",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   json.Number("42"),
+			wantErr: false,
+		},
+		{
+			name:    "Number valid float",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   json.Number("3.14159"),
+			wantErr: false,
+		},
+		{
+			name:    "Number valid negative",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   json.Number("-100"),
+			wantErr: false,
+		},
+		{
+			name:    "Number invalid raw int",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   42, // Should fail because service is expected to provide json.Number
+			wantErr: true,
+		},
+		{
+			name:    "Number invalid string",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   json.Number("twenty-five"), // Should fail because twenty five isnt valid
+			wantErr: true,
+		},
+		{
+			name:    "Number invalid raw float64",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.SingleValuedColumn},
+			input:   3.14,
+			wantErr: true,
+		},
+		{
+			name:    "Number List valid",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.ListValuedColumn},
+			input:   []any{json.Number("1"), json.Number("2.5"), json.Number("-3")},
+			wantErr: false,
+		},
+		{
+			name:    "Number List invalid item type",
+			schema:  domain.SchemaDefinition{ColumnType: domain.NumberColumn, ColumnDefinition: domain.ListValuedColumn},
+			input:   []any{json.Number("1"), 2.5}, // Second item is float64, not json.Number
+			wantErr: true,
+		},
 		// --- List Valued Tests ---
 		{
 			name:    "List of Booleans valid",

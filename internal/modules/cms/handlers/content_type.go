@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"time"
 
 	"log"
@@ -40,10 +39,6 @@ type CreateContentTypeInput struct {
 	Slug             string                             `json:"slug"`
 	Description      string                             `json:"description,omitempty"`
 	SchemaDefinition map[string]domain.SchemaDefinition `json:"schemaDefinition"`
-}
-
-func validationError(e echo.Context, msg string) error {
-	return httpTransport.ErrWithMsg(e, http.StatusBadRequest, "failed to process request payload: "+msg, nil)
 }
 
 func (h *contentTypeHandlers) CreateContentType(e echo.Context) error {
@@ -142,6 +137,9 @@ func (h *contentTypeHandlers) GetContentType(e echo.Context) error {
 		return validationError(e, "failed to parse request payload")
 	}
 
+	if payload.AccountId == nil {
+		return validationError(e, "account id is required")
+	}
 	aid, err := uuid.Parse(*payload.AccountId)
 	if err != nil {
 		return validationError(e, "invalid account id: "+err.Error())

@@ -122,8 +122,85 @@ func (sd *SchemaDefinition) IsValid() bool {
 }
 
 func (sd *SchemaDefinition) ValidateAny(v any) error {
-	var value any
 	isMulti := sd.ColumnDefinition == ListValuedColumn
+
+	testSingularV := func(value any) error {
+		switch sd.ColumnType {
+		case BooleanColumn:
+			_, ok := value.(bool)
+			if !ok {
+				return errors.New("needs to be a boolean")
+			}
+
+		case ShortTextColumn:
+			if str, ok := value.(string); !ok {
+				return errors.New("needs to be a string")
+			} else {
+				if len(str) > SHORT_TEXT_MAX_LENGTH {
+					return fmt.Errorf("should be less than %d characters", SHORT_TEXT_MAX_LENGTH)
+				}
+			}
+		case LongTextColumn:
+			if _, ok := value.(string); !ok {
+				return errors.New("needs to be a string")
+			}
+		case MarkdownColumn:
+			if _, ok := value.(string); !ok {
+				return errors.New("needs to be a string")
+			}
+		case NumberColumn:
+			if number, ok := value.(json.Number); !ok {
+				return errors.New("needs to be a number")
+			} else {
+				var isNumber bool
+				_, err := number.Float64()
+				if err == nil {
+					isNumber = true
+				}
+				_, err = number.Int64()
+				if err == nil {
+					isNumber = true
+				}
+				if !isNumber {
+					return errors.New("needs to be a number")
+				}
+			}
+
+		// TODO: For now, i'm thinking i'll store both UUIDs and strings in this column.
+		// Strings will be urls and uuids will be references to a files table (not yet in schemas)
+		case FileColumn:
+			if _, ok := value.(string); !ok {
+				return errors.New("needs to be a string")
+			}
+		case DateColumn:
+			if _, ok := value.(time.Time); !ok {
+				return errors.New("needs to be a time")
+			}
+		case DateTimeColumn:
+			if _, ok := value.(time.Time); !ok {
+				return errors.New("needs to be a time")
+			}
+		// JSON Marshallable Bytes
+		case JsonColumn:
+			if _, err := json.Marshal(value); err != nil {
+				return errors.New("needs to be valid json: " + err.Error())
+			}
+
+		case ReferenceColumn:
+			if _, ok := v.(uuid.UUID); !ok {
+				if str, ok := v.(string); !ok {
+					return errors.New("needs to be of type UUID or string")
+				} else {
+					if _, err := uuid.Parse(str); err != nil {
+						return errors.New("needs to be valid UUID")
+					}
+				}
+			}
+		default:
+			return errors.New("invalid column type: " + string(sd.ColumnType))
+		}
+		return nil
+	}
 
 	if isMulti {
 		arr, ok := v.([]any)
@@ -135,71 +212,18 @@ func (sd *SchemaDefinition) ValidateAny(v any) error {
 		if len(arr) == 0 {
 			return nil
 		} else {
-			value = arr[0]
-		}
-	} else {
-		value = v
-	}
-
-	switch sd.ColumnType {
-	case BooleanColumn:
-		_, ok := value.(bool)
-		if !ok {
-			return errors.New("needs to be a boolean")
-		}
-
-	case ShortTextColumn:
-		if str, ok := value.(string); !ok {
-			return errors.New("needs to be a string")
-		} else {
-			if len(str) > SHORT_TEXT_MAX_LENGTH {
-				return fmt.Errorf("should be less than %d characters", SHORT_TEXT_MAX_LENGTH)
-			}
-		}
-	case LongTextColumn:
-		if _, ok := value.(string); !ok {
-			return errors.New("needs to be a string")
-		}
-	case MarkdownColumn:
-		if _, ok := value.(string); !ok {
-			return errors.New("needs to be a string")
-		}
-	case NumberColumn:
-		if _, ok := value.(json.Number); !ok {
-			return errors.New("needs to be a number")
-		}
-	// TODO: For now, i'm thinking i'll store both UUIDs and strings in this column.
-	// Strings will be urls and uuids will be references to a files table (not yet in schemas)
-	case FileColumn:
-		if _, ok := value.(string); !ok {
-			return errors.New("needs to be a string")
-		}
-	case DateColumn:
-		if _, ok := value.(time.Time); !ok {
-			return errors.New("needs to be a time")
-		}
-	case DateTimeColumn:
-		if _, ok := value.(time.Time); !ok {
-			return errors.New("needs to be a time")
-		}
-	// JSON Marshallable Bytes
-	case JsonColumn:
-		if _, err := json.Marshal(value); err != nil {
-			return errors.New("needs to be valid json: " + err.Error())
-		}
-
-	case ReferenceColumn:
-		if _, ok := v.(uuid.UUID); !ok {
-			if str, ok := v.(string); !ok {
-				return errors.New("needs to be of type UUID or string")
-			} else {
-				if _, err := uuid.Parse(str); err != nil {
-					return errors.New("needs to be valid UUID")
+			for _, value := range arr {
+				err := testSingularV(value)
+				if err != nil {
+					return err
 				}
 			}
 		}
-	default:
-		return errors.New("invalid column type: " + string(sd.ColumnType))
+	} else {
+		err := testSingularV(v)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -215,6 +239,11 @@ func (sdm SchemaDefinitionMap) Value() (driver.Value, error) {
 	return json.Marshal(sdm)
 }
 func (sdm *SchemaDefinitionMap) Scan(src any) error {
+	if src == nil {
+		*sdm = make(SchemaDefinitionMap)
+		return nil
+	}
+
 	source, ok := src.([]byte)
 	if !ok {
 		return errors.New("failed to assert into []byte. corrupt value")

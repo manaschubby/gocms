@@ -45,7 +45,7 @@ func (s *contentTypeService) CreateNewContentType(ctx context.Context, ct *domai
 		}
 	}
 
-	errCode, err := s.validateAccount(ctx, ct.AccountId)
+	errCode, err := ValidateAccount(s.r.Account, ctx, ct.AccountId)
 	if err != nil {
 		return errCode, err
 	}
@@ -91,7 +91,7 @@ func (s *contentTypeService) CreateNewContentType(ctx context.Context, ct *domai
 }
 
 func (s *contentTypeService) DeleteContentType(ctx context.Context, ct *domain.ContentType) (code int, error error) {
-	errCode, err := s.validateAccount(ctx, ct.AccountId)
+	errCode, err := ValidateAccount(s.r.Account, ctx, ct.AccountId)
 	if err != nil {
 		return errCode, err
 	}
@@ -124,7 +124,7 @@ func (s *contentTypeService) DeleteContentType(ctx context.Context, ct *domain.C
 }
 
 func (s *contentTypeService) GetAllContentTypes(ctx context.Context, accountId uuid.UUID) (contentTypes []*domain.ContentType, code int, error error) {
-	errCode, err := s.validateAccount(ctx, accountId)
+	errCode, err := ValidateAccount(s.r.Account, ctx, accountId)
 	if err != nil {
 		return nil, errCode, err
 	}
@@ -148,7 +148,7 @@ func (s *contentTypeService) GetAllContentTypes(ctx context.Context, accountId u
 }
 
 func (s *contentTypeService) GetContentType(ctx context.Context, ct *domain.ContentType) (contentType *domain.ContentType, code int, error error) {
-	errCode, err := s.validateAccount(ctx, ct.AccountId)
+	errCode, err := ValidateAccount(s.r.Account, ctx, ct.AccountId)
 	if err != nil {
 		return contentType, errCode, err
 	}
@@ -159,9 +159,8 @@ func (s *contentTypeService) GetContentType(ctx context.Context, ct *domain.Cont
 		}
 	}()
 
-	var emptyUUID uuid.UUID
 	// Get by ID
-	if ct.Id.String() != emptyUUID.String() && ct.Id.String() != "" {
+	if ct.Id != uuid.Nil {
 		contentType, err := s.r.ContentType.GetContentTypeById(ct.Id, repository.GetContentTypeOptions{Context: &ctx})
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -185,17 +184,4 @@ func (s *contentTypeService) GetContentType(ctx context.Context, ct *domain.Cont
 	}
 
 	return contentType, 0, nil
-}
-
-func (s *contentTypeService) validateAccount(ctx context.Context, aid uuid.UUID) (int, error) {
-	account, err := s.r.Account.GetAccountByUUID(aid, repository.GetAccountOptions{Context: &ctx})
-	if err != nil {
-		log.Printf("failed to retrieve account data: %v", err)
-		return http.StatusInternalServerError, errors.New("failed to retrieve account data")
-	}
-
-	if account == nil {
-		return http.StatusBadRequest, errors.New("account not found")
-	}
-	return 0, nil
 }
