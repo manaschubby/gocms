@@ -74,3 +74,36 @@ func (m *MockContentTypeRepo) GetContentTypesByAccountId(account uuid.UUID, opt 
 	}
 	return args.Get(0).([]*domain.ContentType), args.Error(1)
 }
+
+type MockEntryRepo struct {
+	mock.Mock
+}
+
+func (m *MockEntryRepo) GetEntryById(id uuid.UUID, opt repository.GetEntryOptions) (*domain.Entry, error) {
+	args := m.Called(id, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Entry), args.Error(1)
+}
+
+func (m *MockEntryRepo) GetEntryByContentTypeAndSlug(ctId uuid.UUID, slug string, opt repository.GetEntryOptions) (*domain.Entry, error) {
+	args := m.Called(ctId, slug, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Entry), args.Error(1)
+}
+
+func (m *MockEntryRepo) GetEntriesByContentType(ctId uuid.UUID, opt repository.GetEntryOptions) ([]*domain.Entry, error) {
+	args := m.Called(ctId, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Entry), args.Error(1)
+}
+
+func (m *MockEntryRepo) AddEntry(e *domain.Entry, opt repository.AddEntryOptions) error {
+	args := m.Called(e, opt)
+	return args.Error(0)
+}

@@ -23,15 +23,24 @@ type ContentTypeRepository interface {
 	DeleteContentTypeById(id uuid.UUID, options DeleteContentTypeOptions) error
 }
 
+type EntryRepository interface {
+	AddEntry(ct *domain.Entry, options AddEntryOptions) error
+	GetEntryByContentTypeAndSlug(ctId uuid.UUID, slug string, options GetEntryOptions) (e *domain.Entry, err error)
+	GetEntryById(eid uuid.UUID, options GetEntryOptions) (e *domain.Entry, err error)
+	GetEntriesByContentType(ctId uuid.UUID, options GetEntryOptions) (e []*domain.Entry, err error)
+}
+
 type Repositories struct {
 	Account     AccountRepository
 	ContentType ContentTypeRepository
+	Entry       EntryRepository
 }
 
 func Init(db *sqlx.DB) Repositories {
 	r := Repositories{
 		Account:     NewAccountRepository(db),
 		ContentType: NewContentTypeRepository(db),
+		Entry:       NewEntryRepository(db),
 	}
 	return r
 }

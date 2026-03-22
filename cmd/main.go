@@ -34,6 +34,8 @@ func main() {
 	server.GET("/content_types", cms.Handlers.ContentType.GetContentType)
 	server.POST("/content_types", cms.Handlers.ContentType.CreateContentType)
 	server.DELETE("/content_types", cms.Handlers.ContentType.DeleteContentType)
+	server.POST("/entries", cms.Handlers.Entry.AddEntry)
+	server.GET("/entries", cms.Handlers.Entry.GetEntry)
 
 	server.Start(":7467")
 }
