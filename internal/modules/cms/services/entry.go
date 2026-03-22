@@ -70,7 +70,7 @@ func (s *entryService) CreateEntry(ctx context.Context, e *domain.Entry, account
 	if err != nil { // should not happen (callers should check for validation before passing)
 		return http.StatusBadRequest, fmt.Errorf("failed to parse content data: %w", err)
 	}
-	log.Printf("%v", contentData)
+
 	errorColumns := make([]string, 0)
 	for k, v := range schema {
 		value := contentData[k]

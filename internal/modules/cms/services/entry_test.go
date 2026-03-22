@@ -3,7 +3,6 @@ package services_test
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"testing"
 
@@ -95,7 +94,6 @@ func TestEntryService_CreateEntry(t *testing.T) {
 				em.On("GetEntryByContentTypeAndSlug", ctID, "valid-post", mock.Anything).Return(nil, nil)
 				em.On("AddEntry", mock.MatchedBy(func(e *domain.Entry) bool {
 					var data map[string]any
-					log.Printf("%v", *e)
 					json.Unmarshal(e.ContentData, &data)
 					return data["status"] == "draft" // Verify default was applied
 				}), mock.Anything).Return(nil)
