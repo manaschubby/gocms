@@ -1,0 +1,7 @@
+info:
+  name: Content Types
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit

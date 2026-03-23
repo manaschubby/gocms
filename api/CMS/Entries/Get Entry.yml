@@ -1,0 +1,30 @@
+info:
+  name: Get Entry
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/entries?contentTypeId=fe50d32c-4d09-4a51-b375-e517f87f8221&status=published"
+  params:
+    - name: id
+      value: 0768f6c9-01b0-42c9-a566-f221fb4d8235
+      type: query
+      disabled: true
+    - name: contentTypeId
+      value: fe50d32c-4d09-4a51-b375-e517f87f8221
+      type: query
+    - name: slug
+      value: my-eighth-entry
+      type: query
+      disabled: true
+    - name: status
+      value: published
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

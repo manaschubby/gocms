@@ -1,0 +1,15 @@
+info:
+  name: Update Entry
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/entries"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

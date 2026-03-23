@@ -1,0 +1,29 @@
+info:
+  name: Add Entry
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/entries"
+  body:
+    type: json
+    data: |-
+      {
+        "title":"My eighth Entry",
+        "slug":"my-nignth-entry",
+        "accountId":"78811fdb-58de-4da5-b0d4-2276c84fda76",
+        "contentData":{
+          "name":"YourDad",
+          "age": true
+        },
+        "contentTypeId":"0becbee6-068c-48af-9838-7c9a4073c4c2",
+        "status":"draft"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,23 @@
+info:
+  name: Delete ContentType
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{base_url}}/content_types"
+  body:
+    type: json
+    data: |-
+      {
+        "accountId": "78811fdb-58de-4da5-b0d4-2276c84fda76",
+        "name": "new me",
+        "slug": "made-in-new-me"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

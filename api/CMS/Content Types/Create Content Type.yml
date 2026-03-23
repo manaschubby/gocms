@@ -1,0 +1,39 @@
+info:
+  name: Create Content Type
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/content_types"
+  body:
+    type: json
+    data: |-
+      {
+        "accountId": "78811fdb-58de-4da5-b0d4-2276c84fda76",
+        "name": "numbers",
+        "slug": "numerical-columns",
+        "description": "Description",
+        "schemaDefinition": {
+          "name": {
+            "columnType": "short-text",
+            "columnDefinition": 0,
+            "defaultValue": "Untitled",
+            "required": true,
+            "description": ""
+          },
+           "age": {
+            "columnType": "number",
+            "columnDefinition": 0,
+            "required": true,
+            "description": ""
+          }
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
