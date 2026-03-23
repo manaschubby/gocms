@@ -79,6 +79,8 @@ type MockEntryRepo struct {
 	mock.Mock
 }
 
+var _ repository.EntryRepository = &MockEntryRepo{}
+
 func (m *MockEntryRepo) GetEntryById(id uuid.UUID, opt repository.GetEntryOptions) (*domain.Entry, error) {
 	args := m.Called(id, opt)
 	if args.Get(0) == nil {
@@ -103,7 +105,20 @@ func (m *MockEntryRepo) GetEntriesByContentType(ctId uuid.UUID, opt repository.G
 	return args.Get(0).([]*domain.Entry), args.Error(1)
 }
 
+func (m *MockEntryRepo) GetEntriesByFilter(e *domain.Entry, opt repository.GetEntryOptions) ([]*domain.Entry, error) {
+	args := m.Called(e, opt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Entry), args.Error(1)
+}
+
 func (m *MockEntryRepo) AddEntry(e *domain.Entry, opt repository.AddEntryOptions) error {
+	args := m.Called(e, opt)
+	return args.Error(0)
+}
+
+func (m *MockEntryRepo) UpdateEntry(e *domain.Entry, opt repository.UpdateEntryOptions) error {
 	args := m.Called(e, opt)
 	return args.Error(0)
 }

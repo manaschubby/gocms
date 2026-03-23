@@ -24,10 +24,12 @@ type ContentTypeRepository interface {
 }
 
 type EntryRepository interface {
-	AddEntry(ct *domain.Entry, options AddEntryOptions) error
+	AddEntry(e *domain.Entry, options AddEntryOptions) error
 	GetEntryByContentTypeAndSlug(ctId uuid.UUID, slug string, options GetEntryOptions) (e *domain.Entry, err error)
 	GetEntryById(eid uuid.UUID, options GetEntryOptions) (e *domain.Entry, err error)
 	GetEntriesByContentType(ctId uuid.UUID, options GetEntryOptions) (e []*domain.Entry, err error)
+	GetEntriesByFilter(entry *domain.Entry, options GetEntryOptions) (e []*domain.Entry, err error)
+	UpdateEntry(entry *domain.Entry, options UpdateEntryOptions) (err error)
 }
 
 type Repositories struct {

@@ -16,6 +16,7 @@ import (
 type EntryHandlers interface {
 	AddEntry(e echo.Context) error
 	GetEntry(e echo.Context) error
+	UpdateEntry(e echo.Context) error
 }
 
 type entryHandlers struct {
@@ -100,6 +101,7 @@ type GetEntryInput struct {
 	Id            string `query:"id"`
 	Slug          string `query:"slug"`
 	ContentTypeId string `query:"contentTypeId"`
+	Status        string `query:"status"`
 }
 
 func (h *entryHandlers) GetEntry(e echo.Context) error {
@@ -110,8 +112,8 @@ func (h *entryHandlers) GetEntry(e echo.Context) error {
 		return validationError(e, "invalid request payload type")
 	}
 
-	if payload.Id == "" && payload.Slug == "" && payload.ContentTypeId == "" {
-		return validationError(e, "id, slug or contentTypeId is required")
+	if payload.Id == "" && payload.Slug == "" && payload.Status == "" && payload.ContentTypeId == "" {
+		return validationError(e, "id, slug, status or contentTypeId is required")
 	}
 
 	var entry *domain.Entry
@@ -131,6 +133,10 @@ func (h *entryHandlers) GetEntry(e echo.Context) error {
 		return httpTransport.Ok(e, entry)
 	}
 
+	if payload.ContentTypeId == "" {
+		return validationError(e, "contentTypeId is required for querying using fields other than id")
+	}
+
 	ctId, err := uuid.Parse(payload.ContentTypeId)
 	if err != nil {
 		return validationError(e, "invalid contentTypeId, should match uuid: "+err.Error())
@@ -147,10 +153,65 @@ func (h *entryHandlers) GetEntry(e echo.Context) error {
 		return httpTransport.Ok(e, entry)
 	}
 
-	entries, code, err := h.cmsServices.Entry.GetAllEntries(e.Request().Context(), &ctId)
+	var status domain.EntryStatus
+	if payload.Status != "" {
+		err := status.Scan(payload.Status)
+		if err != nil {
+			return validationError(e, err.Error())
+		}
+	}
+
+	entries, code, err := h.cmsServices.Entry.GetAllEntries(e.Request().Context(), &domain.Entry{
+		ContentTypeId: ctId,
+		Status:        status,
+		Slug:          payload.Slug,
+	})
 	if err != nil {
 		return httpTransport.ErrWithMsg(e, code, err.Error(), nil)
 	}
 
 	return httpTransport.Ok(e, entries)
+}
+
+type UpdateEntryInput struct {
+	Id          string          `json:"id"`
+	Status      string          `json:"status"`
+	Title       string          `json:"title"`
+	ContentData json.RawMessage `json:"contentData,omitempty"`
+}
+
+func (h *entryHandlers) UpdateEntry(e echo.Context) error {
+	var payload UpdateEntryInput
+	err := e.Bind(&payload)
+	if err != nil {
+		return validationError(e, "invalid request payload")
+	}
+
+	if payload.Id == "" {
+		return validationError(e, "id is required to update entry")
+	}
+
+	if payload.Status == "" && payload.Title == "" && len(payload.ContentData) == 0 {
+		return validationError(e, "atleast one field among status, title, or contentData must be provided")
+	}
+
+	var status domain.EntryStatus
+	if payload.Status != "" {
+		err := status.Scan(payload.Status)
+		if err != nil {
+			return validationError(e, err.Error())
+		}
+	}
+
+	id, err := uuid.Parse(payload.Id)
+	if err != nil {
+		return validationError(e, "failed to validate id, must be valid uuid: "+err.Error())
+	}
+
+	entry, code, err := h.cmsServices.Entry.UpdateEntry(e.Request().Context(), &domain.Entry{Status: status, Title: payload.Title, Id: id, ContentData: payload.ContentData})
+	if err != nil {
+		return httpTransport.ErrWithMsg(e, code, err.Error(), nil)
+	}
+
+	return httpTransport.Ok(e, entry)
 }

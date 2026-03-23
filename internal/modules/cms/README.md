@@ -6,5 +6,11 @@ Package Repo exposes interface implementations to DB interactions related to the
 
 Package handlers uses the service interfaces. We keep request payload validation in handlers and delegate business logic over to services
 
-Imp Notes:
-Numerical Columns are computed as float64. They are parsed into json.Number and used as float64. Reference: [internal/modules/cms/services/entry.go](./services/entry.go) and [internal/modules/cms/common/json.go](./common/json.go)
+### Imp Notes:
+- Numerical Columns are computed as float64. They are parsed into json.Number and used as float64. Reference: [internal/modules/cms/services/entry.go](./services/entry.go) and [internal/modules/cms/common/json.go](./common/json.go)
+
+### TODOs:
+- [ ] Add/test and confirm Date parsing logic for contentData and entries.
+- [ ] Add tests for Handlers Package
+- [ ] Add tests for Repository Package
+- [ ] Add tests for Common Package

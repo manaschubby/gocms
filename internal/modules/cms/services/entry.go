@@ -2,15 +2,13 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/manaschubby/gocms/internal/modules/cms/common"
 	"github.com/manaschubby/gocms/internal/modules/cms/domain"
 	"github.com/manaschubby/gocms/internal/modules/cms/repository"
 )
@@ -18,7 +16,8 @@ import (
 type EntryService interface {
 	CreateEntry(ctx context.Context, e *domain.Entry, accountId uuid.UUID) (code int, err error)
 	GetEntry(ctx context.Context, e *domain.Entry) (entry *domain.Entry, code int, err error)
-	GetAllEntries(ctx context.Context, ctId *uuid.UUID) (entries []*domain.Entry, code int, err error)
+	GetAllEntries(ctx context.Context, e *domain.Entry) (entries []*domain.Entry, code int, err error)
+	UpdateEntry(ctx context.Context, e *domain.Entry) (entry *domain.Entry, code int, err error)
 }
 
 type entryService struct {
@@ -39,18 +38,14 @@ func (s *entryService) CreateEntry(ctx context.Context, e *domain.Entry, account
 	}
 
 	// Get Content Type
-	ct, err := s.r.ContentType.GetContentTypeById(e.ContentTypeId, repository.GetContentTypeOptions{Context: &ctx})
+	ct, code, err := ValidateContentType(s.r.ContentType, ctx, e.ContentTypeId)
 	if err != nil {
-		log.Printf("failed to fetch content type: %v", err)
-		return http.StatusInternalServerError, fmt.Errorf("failed to fetch content type")
-	}
-	if ct == nil {
-		return http.StatusBadRequest, errors.New("content_type does not exist")
+		return code, err
 	}
 
 	err = ct.Validate()
 	if err != nil {
-		return http.StatusBadRequest, errors.New("content_type schema is invalid")
+		return http.StatusBadRequest, errors.New("contentType schema is invalid")
 	}
 
 	// Check if pre-exists
@@ -64,41 +59,12 @@ func (s *entryService) CreateEntry(ctx context.Context, e *domain.Entry, account
 	}
 
 	// Validate content data
-	schema := ct.SchemaDefinition
-	var contentData map[string]any
-	err = common.JsonNumberDecode(e.ContentData, &contentData)
-	if err != nil { // should not happen (callers should check for validation before passing)
-		return http.StatusBadRequest, fmt.Errorf("failed to parse content data: %w", err)
-	}
-
-	errorColumns := make([]string, 0)
-	for k, v := range schema {
-		value := contentData[k]
-		if v.DefaultValue != nil && value == nil {
-			value = v.DefaultValue
-		}
-		if v.Required && value == nil {
-			errorColumns = append(errorColumns, k+": required field and no default value exists")
-			continue
-		}
-
-		err = v.ValidateAny(value)
-		if err != nil {
-			errorColumns = append(errorColumns, k+": "+err.Error())
-		}
-		contentData[k] = value
-	}
-
-	if len(errorColumns) != 0 {
-		return http.StatusBadRequest, errors.New("schema validation failed for following columns: {" + strings.Join(errorColumns, ", ") + "}")
-	}
-
-	cd, err := json.Marshal(contentData)
+	cd, err := ValidateContentData(e.ContentData, ct.SchemaDefinition)
 	if err != nil {
-		log.Printf("failed to prepare contentData for db insert: %v", err)
-		return http.StatusInternalServerError, errors.New("failed to prepare contentData for db insert")
+		return http.StatusBadRequest, err
 	}
-	e.ContentData = json.RawMessage(cd)
+
+	e.ContentData = cd
 	err = s.r.Entry.AddEntry(e, repository.AddEntryOptions{Context: &ctx})
 	if err != nil {
 		log.Printf("failed to insert entry into db: %v", err)
@@ -122,14 +88,9 @@ func (s *entryService) GetEntry(ctx context.Context, e *domain.Entry) (entry *do
 		return entry, code, err
 	}
 
-	contentType, err := s.r.ContentType.GetContentTypeById(e.ContentTypeId, repository.GetContentTypeOptions{Context: &ctx})
+	_, code, err = ValidateContentType(s.r.ContentType, ctx, e.ContentTypeId)
 	if err != nil {
-		log.Printf("failed to fetch contentType from database: %v", err)
-		return entry, http.StatusInternalServerError, errors.New("failed to fetch contentType from database")
-	}
-
-	if contentType == nil {
-		return entry, http.StatusBadRequest, errors.New("contentType does not exist")
+		return entry, code, err
 	}
 
 	entry, err = s.r.Entry.GetEntryByContentTypeAndSlug(e.ContentTypeId, e.Slug, repository.GetEntryOptions{Context: &ctx})
@@ -143,26 +104,70 @@ func (s *entryService) GetEntry(ctx context.Context, e *domain.Entry) (entry *do
 	return entry, code, err
 }
 
-func (s *entryService) GetAllEntries(ctx context.Context, ctId *uuid.UUID) (entries []*domain.Entry, code int, err error) {
-
-	contentType, err := s.r.ContentType.GetContentTypeById(*ctId, repository.GetContentTypeOptions{Context: &ctx})
+func (s *entryService) GetAllEntries(ctx context.Context, e *domain.Entry) (entries []*domain.Entry, code int, err error) {
+	_, code, err = ValidateContentType(s.r.ContentType, ctx, e.ContentTypeId)
 	if err != nil {
-		log.Printf("failed to fetch contentType from database: %v", err)
-		return entries, http.StatusInternalServerError, errors.New("failed to fetch contentType from database")
+		return entries, code, err
 	}
 
-	if contentType == nil {
-		return entries, http.StatusBadRequest, errors.New("contentType does not exist")
-	}
-
-	entries, err = s.r.Entry.GetEntriesByContentType(*ctId, repository.GetEntryOptions{Context: &ctx})
+	entries, err = s.r.Entry.GetEntriesByFilter(e, repository.GetEntryOptions{Context: &ctx})
 	if err != nil {
 		log.Printf("failed to fetch entries from database: %v", err)
-		return entries, http.StatusInternalServerError, errors.New("failed to fetch contentType from database")
+		return entries, http.StatusInternalServerError, errors.New("failed to fetch entries from database")
 	}
 	if entries == nil {
 		return []*domain.Entry{}, 0, nil
 	}
 
 	return entries, code, err
+}
+
+func (s *entryService) UpdateEntry(ctx context.Context, e *domain.Entry) (entry *domain.Entry, code int, err error) {
+	entry, err = s.r.Entry.GetEntryById(e.Id, repository.GetEntryOptions{Context: &ctx})
+	if err != nil {
+		log.Printf("failed tp fetch entry from Db: %v", err)
+		return entry, http.StatusInternalServerError, errors.New("failed to fetch entry from db")
+	}
+	if entry == nil {
+		return entry, http.StatusBadRequest, errors.New("entry does not exist")
+	}
+
+	ct, code, err := ValidateContentType(s.r.ContentType, ctx, entry.ContentTypeId)
+	if err != nil {
+		return entry, code, err
+	}
+
+	if e.ContentData != nil {
+		contentData, err := ValidateContentData(e.ContentData, ct.SchemaDefinition)
+		if err != nil {
+			return entry, http.StatusBadRequest, err
+		}
+
+		entry.ContentData = contentData
+	}
+
+	if e.Status != "" {
+		err := entry.Status.Scan(e.Status)
+		if err != nil {
+			return entry, http.StatusBadRequest, fmt.Errorf("invalid status found: %w", err)
+		}
+	}
+
+	if e.Title != "" {
+		entry.Title = e.Title
+	}
+
+	if entry.IsDifferentTo(*e) {
+
+		entry.Version = entry.Version + 1
+		entry.UpdatedAt = time.Now()
+
+		err := s.r.Entry.UpdateEntry(entry, repository.UpdateEntryOptions{Context: &ctx})
+		if err != nil {
+			log.Printf("failed to update entry in DB: %v", err)
+			return entry, http.StatusInternalServerError, errors.New("failed to update entry in DB")
+		}
+	}
+
+	return entry, code, err
 }

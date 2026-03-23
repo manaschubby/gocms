@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -53,7 +54,7 @@ func TestEntryService_CreateEntry(t *testing.T) {
 				cm.On("GetContentTypeById", ctID, mock.Anything).Return(nil, nil)
 			},
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "content_type does not exist",
+			expectedError: "contentType does not exist",
 		},
 		{
 			name:       "Fail - Duplicate Slug",
@@ -238,6 +239,48 @@ func TestEntryService_GetEntry(t *testing.T) {
 			},
 			expectedCode: http.StatusBadRequest,
 		},
+		{
+			name:  "Fail - DB Error GetEntryById",
+			input: &domain.Entry{Id: entryID},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				me.On("GetEntryById", entryID, mock.Anything).Return(nil, errors.New("db error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:  "Fail - DB Error GetContentTypeById",
+			input: &domain.Entry{ContentTypeId: ctID, Slug: "my-slug"},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(nil, errors.New("db error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:  "Fail - ContentType Does Not Exist",
+			input: &domain.Entry{ContentTypeId: ctID, Slug: "my-slug"},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(nil, nil)
+			},
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:  "Fail - DB Error GetEntryByContentTypeAndSlug",
+			input: &domain.Entry{ContentTypeId: ctID, Slug: "my-slug"},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(&domain.ContentType{Id: ctID}, nil)
+				me.On("GetEntryByContentTypeAndSlug", ctID, "my-slug", mock.Anything).Return(nil, errors.New("db error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:  "Fail - Entry Not Found By Slug",
+			input: &domain.Entry{ContentTypeId: ctID, Slug: "my-slug"},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(&domain.ContentType{Id: ctID}, nil)
+				me.On("GetEntryByContentTypeAndSlug", ctID, "my-slug", mock.Anything).Return(nil, nil)
+			},
+			expectedCode: http.StatusBadRequest,
+		},
 	}
 
 	for _, tt := range tests {
@@ -248,6 +291,82 @@ func TestEntryService_GetEntry(t *testing.T) {
 
 			_, code, _ := svc.GetEntry(ctx, tt.input)
 			assert.Equal(t, tt.expectedCode, code)
+		})
+	}
+}
+
+func TestEntryService_GetAllEntries(t *testing.T) {
+	ctID := uuid.New()
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		input        *domain.Entry
+		setupMock    func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo)
+		expectedCode int
+		expectedLen  int
+		expectedErr  bool
+	}{
+		{
+			name:  "Success - Found Entries",
+			input: &domain.Entry{ContentTypeId: ctID},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(&domain.ContentType{Id: ctID}, nil)
+				me.On("GetEntriesByFilter", mock.Anything, mock.Anything).Return([]*domain.Entry{{Id: uuid.New()}, {Id: uuid.New()}}, nil)
+			},
+			expectedCode: 0,
+			expectedLen:  2,
+			expectedErr:  false,
+		},
+		{
+			name:  "Success - No Entries Found (Empty Slice)",
+			input: &domain.Entry{ContentTypeId: ctID},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(&domain.ContentType{Id: ctID}, nil)
+				me.On("GetEntriesByFilter", mock.Anything, mock.Anything).Return(nil, nil)
+			},
+			expectedCode: 0,
+			expectedLen:  0,
+			expectedErr:  false,
+		},
+		{
+			name:  "Fail - ContentType Not Found",
+			input: &domain.Entry{ContentTypeId: ctID},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(nil, nil)
+			},
+			expectedCode: http.StatusBadRequest,
+			expectedLen:  0,
+			expectedErr:  true,
+		},
+		{
+			name:  "Fail - DB Error on GetEntriesByFilter",
+			input: &domain.Entry{ContentTypeId: ctID},
+			setupMock: func(mc *mocks.MockContentTypeRepo, me *mocks.MockEntryRepo) {
+				mc.On("GetContentTypeById", ctID, mock.Anything).Return(&domain.ContentType{Id: ctID}, nil)
+				me.On("GetEntriesByFilter", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+			expectedLen:  0,
+			expectedErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc, me := new(mocks.MockContentTypeRepo), new(mocks.MockEntryRepo)
+			svc := services.NewEntryService(repository.Repositories{ContentType: mc, Entry: me})
+			tt.setupMock(mc, me)
+
+			res, code, err := svc.GetAllEntries(ctx, tt.input)
+
+			assert.Equal(t, tt.expectedCode, code)
+			assert.Len(t, res, tt.expectedLen)
+			if tt.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

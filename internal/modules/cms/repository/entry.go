@@ -103,3 +103,45 @@ func (r *entryRepositry) GetEntriesByContentType(ctId uuid.UUID, options GetEntr
 
 	return e, err
 }
+
+func (r *entryRepositry) GetEntriesByFilter(entry *domain.Entry, options GetEntryOptions) (e []*domain.Entry, err error) {
+	getEntriesByContentTypeId := `SELECT "id", "content_type_id", "slug", "title", "content_data", "status", "version", "created_at", "updated_at" FROM entries WHERE content_type_id = $1 AND ($2 = '' OR slug = $2) AND ($3 = '' OR status = $3)`
+
+	ctx, cancel := ensureContext(options.Context)
+	defer cancel()
+
+	e = make([]*domain.Entry, 0)
+	err = r.db.SelectContext(ctx, &e, getEntriesByContentTypeId, entry.ContentTypeId, entry.Slug, string(entry.Status))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, errors.New("failed to get entry from db: " + err.Error())
+	}
+
+	return e, err
+}
+
+type UpdateEntryOptions struct {
+	Context *context.Context
+	Tx      *sqlx.Tx
+}
+
+func (r *entryRepositry) UpdateEntry(entry *domain.Entry, options UpdateEntryOptions) (err error) {
+	updateEntryById := `UPDATE entries SET slug = $1, title = $2, content_data = $3, version = $4, updated_at = $5 WHERE content_type_id = $6 AND id = $7`
+
+	ctx, cancel := ensureContext(options.Context)
+	defer cancel()
+
+	exec := getExecerContextFromTxOrDB(options.Tx, r.db)
+
+	res, err := exec.ExecContext(ctx, updateEntryById, entry.Slug, entry.Title, entry.ContentData, entry.Version, entry.UpdatedAt, entry.ContentTypeId, entry.Id)
+	if err != nil {
+		return err
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}

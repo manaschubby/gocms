@@ -16,13 +16,20 @@ type Entry struct {
 	Slug  string `json:"slug" db:"slug"`
 	Title string `json:"title" db:"title"`
 
-	ContentData json.RawMessage `json:"contentData" db:"content_data"` // draft, published, archived
-	Status      EntryStatus     `json:"status" db:"status"`
+	ContentData json.RawMessage `json:"contentData" db:"content_data"`
+	Status      EntryStatus     `json:"status" db:"status"` // draft, published, archived
 
 	Version int `json:"version" db:"version"`
 
 	CreatedAt time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+func (base Entry) IsDifferentTo(cmp Entry) bool {
+	if string(base.ContentData) != string(cmp.ContentData) || base.Title != cmp.Title || base.Status != cmp.Status {
+		return true
+	}
+	return false
 }
 
 type EntryStatus string
